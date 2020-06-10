@@ -1,0 +1,8 @@
+---
+from: markdown
+to: pdf
+author:
+ - David Ramirez
+linkcolor: blue
+geometry: margin=2cm
+...

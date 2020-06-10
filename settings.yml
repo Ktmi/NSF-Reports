@@ -1,0 +1,4 @@
+from: markdown
+to: pdf
+highlight-style: tango
+table-of-contents: true

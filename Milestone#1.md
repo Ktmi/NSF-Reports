@@ -1,10 +1,5 @@
 ---
 title: "Milestone 1: Disabling Kernel Level IP Checksum Verification"
-author:
- - David Ramirez
-linkcolor: blue
-geometry: margin=2cm
-highlight-style: zenburn
 ...
 
 # Introduction
