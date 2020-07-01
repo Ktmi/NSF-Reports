@@ -5,7 +5,7 @@ title: "Milestone 2: Controlling Kytos Topology Metadata Through File Uploads"
 # Introduction
 
 A feature the CIARA team would like to be added to Kytos Topology,
-is the ability to submit a json file specifying metadata of the components of the topology.
+is the ability to submit a json file specifying metadata of the components of the topology. This feature will be used to provide metadata for pathfinder and other NApps.
 This report covers the changes I've made to the Toplogy module, in order to achieve this end.
 
 # Planning / Implementation
@@ -581,6 +581,7 @@ The final results of testing are the following:
 | Test 4: No Input Data           | Pass      |
 | Test 5: Empty Field             | Pass      |
 
+
 # Updating the UI
 
 To make the new feature accessible to users, a new UI element was in order.
@@ -589,6 +590,17 @@ Within the tab is a file upload form, which a json file can be submitted through
 Due to problems with my understanding of how vue works, I was unable to
 display a message indicating the response the server sent after completing
 the upload.
+
+# Validating the System
+
+To check that the system worked as intended, I created a network using mininet,
+then applied metadata to it.
+Modifying the latitude and longitude of switches allowed to visualize changes while testing.
+
+During system validation, I discovered that the function used for updating
+the persistent representation of the metadata had a flaw in it, which would
+result in the metadata not updating. This is caused by the method not properly passing the proper parameters to the event listener, causing an exception.
+I did not fix this issue, as its wasn't a core concern of the project.
 
 # Guides
 
@@ -625,11 +637,9 @@ To get started, you will need a file appropriately formated. Provided below is a
 }
 ```
 
-
-
 ## Using the UI to Update the Topology Metadata
 
-This is a step by step covering how to use the UI to update the Topology Metadata.
+This is a step by step covering how to use the UI to update the Topology metadata.
 
  1. Open up the UI
  2. Open up the Topology tab (represented by a map icon)
@@ -638,6 +648,32 @@ This is a step by step covering how to use the UI to update the Topology Metadat
 
 Due to issues getting the UI to work properly their no confirmation to the user
 that the file has been properly received.
+
+## Using Metadata with Pathfinder
+
+One NApp which benefits from adding metadata to topology is pathfinder. 
+Attributes about links which can be used in pathfinding can be specified by adding in metadata.
+For the version of pathfinder produced as part of my senior project, the following is an example of metadata that can be attached to links for pathfinding:
+
+```json
+{
+    "links":[
+        {
+            "id":"link-id",
+            "metadata": {
+                "ownership":"Jack", // Owner of the link
+                "bandwidth":100, // Speed of the link
+                "priority":100, // Level of preference
+                "reliability":5, //Reliability of data transmission
+                "utilization":12, // Percentage of link capacity used
+                "delay":13 // One way delay
+            }
+        },
+        ...
+    ]
+}
+```
+
 
 # References
 
@@ -1007,4 +1043,412 @@ index 0000000..88517c2
 +</script>
 \ No newline at end of file
 
+```
+
+## Topology Test Environment
+
+During system validation, I created a topology using mininet.
+The following is the sourcecode for this application.
+
+```python
+from mininet.cli import CLI
+from mininet.log import setLogLevel
+from mininet.net import Mininet
+from mininet.topo import Topo
+from mininet.link import TCLink
+from mininet.node import RemoteController
+
+def run():
+    topo = dTopology()
+    net = Mininet( topo=topo, link=TCLink, build=False)
+    c0 = RemoteController('c0', ip='127.0.0.1',port=6653)
+    net.addController(c0)
+    net.build()
+    net.start()
+    CLI( net )
+    net.stop()
+
+class dTopology (Topo):
+    "Predefined topology"
+
+    def build(self):
+        s1 = self.addSwitch( 'S1')
+        s2 = self.addSwitch( 'S2')
+        s3 = self.addSwitch( 'S3')
+        s4 = self.addSwitch( 'S4')
+        s5 = self.addSwitch( 'S5')
+        s6 = self.addSwitch( 'S6')
+        s7 = self.addSwitch( 'S7')
+        s8 = self.addSwitch( 'S8')
+        s9 = self.addSwitch( 'S9')
+        s10 = self.addSwitch( 'S10')
+        s11 = self.addSwitch( 'S11')
+
+        user1 = self.addSwitch( 'User12')
+        user2 = self.addSwitch( 'User13')
+        user3 = self.addSwitch( 'User14')
+        user4 = self.addSwitch( 'User15')
+
+        self.addLink(s1,s2)
+        self.addLink(s1,user1)
+        self.addLink(s2,user4)
+        self.addLink(s3,s5)
+        self.addLink(s3,s7) #
+        self.addLink(s3,s8)#
+        self.addLink(s3,s11)#
+        self.addLink(s3,user3)#
+        self.addLink(s3,user4)
+        self.addLink(s4,s5)
+        self.addLink(s4,user1)
+        self.addLink(s5,s6)
+        self.addLink(s5,s6)
+        self.addLink(s5,s8)#
+        self.addLink(s5,user1)#
+        self.addLink(s6,s9)
+        self.addLink(s6,s9)#
+        self.addLink(s6,s10)
+        self.addLink(s7,s8)#
+        self.addLink(s8,s9)
+        self.addLink(s8,s9)
+        self.addLink(s8,s10)
+        self.addLink(s8,s11)
+        self.addLink(s8,user3)#
+        self.addLink(s10,user2)
+        self.addLink(s11,user2)
+        self.addLink(user1,user4)
+
+if __name__ == '__main__':
+    setLogLevel( 'info' )
+    run()
+
+```
+
+Additionally, I specified the metadata for this topology with the following
+document.
+
+```json
+{
+    "switches":[
+        {
+            "dpid":"00:00:00:00:00:00:00:01",
+            "metadata":{
+                "lat":0,
+                "lng":0
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:02",
+            "metadata":{
+                "lat":3,
+                "lng":0
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:03",
+            "metadata":{
+                "lat":3,
+                "lng":2
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:04",
+            "metadata":{
+                "lat":-0.5,
+                "lng":1.5
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:05",
+            "metadata":{
+                "lat":0,
+                "lng":2
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:06",
+            "metadata":{
+                "lat":0,
+                "lng":3
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:07",
+            "metadata":{
+                "lat":2.5,
+                "lng":2.5
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:08",
+            "metadata":{
+                "lat":3,
+                "lng":3
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:09",
+            "metadata":{
+                "lat":3,
+                "lng":2
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:0a",
+            "metadata":{
+                "lat":3,
+                "lng":5
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:0b",
+            "metadata":{
+                "lat":4.5,
+                "lng":2
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:0c",
+            "metadata":{
+                "lat":0,
+                "lng":1
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:0d",
+            "metadata":{
+                "lat":5,
+                "lng":3
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:0e",
+            "metadata":{
+                "lat":3.5,
+                "lng":2.5
+            }
+        },
+        {
+            "dpid":"00:00:00:00:00:00:00:0f",
+            "metadata":{
+                "lat":3,
+                "lng":1
+            }
+        }
+    ],
+    "links": [
+        {
+            "id":"00:00:00:00:00:00:00:01:1:00:00:00:00:00:00:00:02:1",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":100,
+                "delay":105
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:01:2:00:00:00:00:00:00:00:0c:1",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":100,
+                "delay":1
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:02:2:00:00:00:00:00:00:00:0f:1",
+            "metadata":{
+                "reliability": 5,
+                "bandwidth": 100,
+                "delay": 10
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:03:1:00:00:00:00:00:00:00:05:1",
+            "metadata":{
+                "reliability": 5,
+                "bandwidth": 10,
+                "delay": 112
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:03:2:00:00:00:00:00:00:00:07:1",
+            "metadata":{
+                "reliability": 5,
+                "bandwidth": 100,
+                "delay": 1
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:03:3:00:00:00:00:00:00:00:08:1",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":100,
+                "delay":1
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:03:4:00:00:00:00:00:00:00:0b:1",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":100,
+                "delay":6
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:03:5:00:00:00:00:00:00:00:0e:1",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":100,
+                "delay":1
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:03:6:00:00:00:00:00:00:00:0f:2",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":100,
+                "delay":10
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:04:1:00:00:00:00:00:00:00:05:2",
+            "metadata":{
+                "reliability":1,
+                "bandwidth":100,
+                "delay":30,
+                "ownership": "A"
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:04:2:00:00:00:00:00:00:00:0c:2",
+            "metadata":{
+                "reliability":3,
+                "bandwidth":100,
+                "delay":110,
+                "ownership": "A"
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:05:3:00:00:00:00:00:00:00:06:1",
+            "metadata":{
+                "reliability":1,
+                "bandwidth":100,
+                "delay":40
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:05:4:00:00:00:00:00:00:00:06:2",
+            "metadata":{
+                "reliability":3,
+                "bandwidth":100,
+                "delay":40,
+                "ownership": "A"
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:05:5:00:00:00:00:00:00:00:08:2",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":100,
+                "delay":112
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:05:6:00:00:00:00:00:00:00:0c:3",
+            "metadata":{
+                "reliability": 3,
+                "bandwidth":100,
+                "delay":110,
+                "ownership": "A"
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:06:3:00:00:00:00:00:00:00:09:1",
+            "metadata":{
+                "reliability":3,
+                "bandwidth":100,
+                "delay":60
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:06:4:00:00:00:00:00:00:00:09:2",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":100,
+                "delay":62
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:06:5:00:00:00:00:00:00:00:0a:1",
+            "metadata":{
+                "bandwidth":100,
+                "delay":108,
+                "ownership": "A"
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:07:2:00:00:00:00:00:00:00:08:3",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":100,
+                "delay":1
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:08:4:00:00:00:00:00:00:00:09:3",
+            "metadata":{"reliability": 3,"bandwidth": 100, "delay":32}
+        },
+        {
+            "id":"00:00:00:00:00:00:00:08:5:00:00:00:00:00:00:00:09:4",
+            "metadata":{"reliability": 3,"bandwidth": 100, "delay":110}
+        },
+        {
+            "id":"00:00:00:00:00:00:00:08:6:00:00:00:00:00:00:00:0a:2",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":100,
+                "ownership":"A"
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:08:7:00:00:00:00:00:00:00:0b:2",
+            "metadata":{
+                "reliability":3,
+                "bandwidth":100,
+                "delay":7
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:08:8:00:00:00:00:00:00:00:0e:2",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":100,
+                "delay":1
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:0a:3:00:00:00:00:00:00:00:0d:1",
+            "metadata":{
+                "reliability":3,
+                "bandwidth":100,
+                "delay":10,
+                "ownership":"A"
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:0b:3:00:00:00:00:00:00:00:0d:2",
+            "metadata":{
+                "reliability":3,
+                "bandwidth":100,
+                "delay":6
+            }
+        },
+        {
+            "id":"00:00:00:00:00:00:00:0c:4:00:00:00:00:00:00:00:0f:3",
+            "metadata":{
+                "reliability":5,
+                "bandwidth":10,
+                "delay":105
+            }
+        }
+    ]
+}
 ```
